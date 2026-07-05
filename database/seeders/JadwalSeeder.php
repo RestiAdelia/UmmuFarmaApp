@@ -43,7 +43,9 @@ class JadwalSeeder extends Seeder
         $layanans = LayananTerapi::where('status', 'aktif')->get();
         $startDate = Carbon::today();
 
-        for ($i = 0; $i < 30; $i++) {
+        // Generate jadwal dari hari ini hingga 60 hari ke depan
+        // Jalankan seeder ini secara berkala agar jadwal selalu tersedia
+        for ($i = 0; $i < 60; $i++) {
             $targetDate = $startDate->copy()->addDays($i);
 
             // Jam operasional 08:00 sampai 22:00 (slot terakhir mulai jam 21:00)
@@ -55,20 +57,21 @@ class JadwalSeeder extends Seeder
                     $genders = ['laki-laki', 'perempuan'];
 
                     foreach ($genders as $gender) {
-                        // Menggunakan updateOrCreate agar tidak duplikat saat seeder dijalankan ulang
-                        Jadwal::updateOrCreate(
+                        // firstOrCreate: hanya buat baru jika belum ada.
+                        // Tidak menimpa UniqueID yang sudah ada (agar booking lama tidak rusak).
+                        Jadwal::firstOrCreate(
                             [
-                                'layanan_id'   => $layanan->id,
-                                'tgl_jadwal'   => $targetDate->format('Y-m-d'),
-                                'jam_mulai'    => $jamMulai,
-                                'jk_target'    => $gender,
+                                'layanan_id' => $layanan->id,
+                                'tgl_jadwal' => $targetDate->format('Y-m-d'),
+                                'jam_mulai'  => $jamMulai,
+                                'jk_target'  => $gender,
                             ],
                             [
-                                'UniqueID'        => (string) Str::uuid(), // Penting untuk tabel Booking
+                                'UniqueID'        => (string) Str::uuid(),
                                 'jam_berakhir'    => $jamSelesai,
-                                'kuota'           => 1, 
+                                'kuota'           => 1,
                                 'jml_terjadwal'   => 0,
-                                'is_aktif'        => true, // Default ON
+                                'is_aktif'        => true,
                                 'jadwal_terkunci' => false,
                             ]
                         );

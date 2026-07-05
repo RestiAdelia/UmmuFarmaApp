@@ -14,12 +14,21 @@ class LayananResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $gambarUrl = null;
+        if ($this->gambar) {
+            if (filter_var($this->gambar, FILTER_VALIDATE_URL)) {
+                $gambarUrl = $this->gambar;
+            } else {
+                $gambarUrl = asset('storage/' . $this->gambar);
+            }
+        }
+
         return [
             'id' => $this->id,
             'nama_layanan' => $this->nama_layanan,
+            'gambar' => $gambarUrl,
             'status' => $this->status,
             'deskripsi' => $this->deskripsi,
-            'tarif' => (float) $this->tarif,
             'durasi' => (int) $this->durasi,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

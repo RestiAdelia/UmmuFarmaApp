@@ -15,9 +15,9 @@ class UpdateLayananRequest extends FormRequest
     {
         return [
             'nama_layanan' => 'sometimes|required|string|max:255',
+            'gambar'       => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
             'status'       => 'sometimes|required|in:aktif,nonaktif',
             'deskripsi'    => 'nullable|string',
-            'tarif'        => 'sometimes|required|numeric|min:0',
             'durasi'       => 'sometimes|required|integer|min:1',
         ];
     }

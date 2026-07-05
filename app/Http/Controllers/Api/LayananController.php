@@ -51,7 +51,12 @@ class LayananController extends Controller
      */
     public function store(StoreLayananRequest $request)
     {
-        $layanan = LayananTerapi::create($request->validated());
+        $data = $request->validated();
+        if ($request->hasFile('gambar')) {
+            $data['gambar'] = $request->file('gambar')->store('layanan', 'public');
+        }
+
+        $layanan = LayananTerapi::create($data);
         
         return $this->success(
             new LayananResource($layanan),
@@ -66,7 +71,15 @@ class LayananController extends Controller
     public function update(UpdateLayananRequest $request, int $id)
     {
         $layanan = LayananTerapi::findOrFail($id);
-        $layanan->update($request->validated());
+        $data = $request->validated();
+        if ($request->hasFile('gambar')) {
+            if ($layanan->gambar && \Storage::disk('public')->exists($layanan->gambar)) {
+                \Storage::disk('public')->delete($layanan->gambar);
+            }
+            $data['gambar'] = $request->file('gambar')->store('layanan', 'public');
+        }
+
+        $layanan->update($data);
         
         return $this->success(
             new LayananResource($layanan),

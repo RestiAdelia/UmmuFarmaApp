@@ -15,9 +15,9 @@ class StoreLayananRequest extends FormRequest
     {
         return [
             'nama_layanan' => 'required|string|max:255',
+            'gambar'       => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'status'       => 'nullable|in:aktif,nonaktif',
             'deskripsi'    => 'nullable|string',
-            'tarif'        => 'required|numeric|min:0',
             'durasi'       => 'required|integer|min:1',
         ];
     }

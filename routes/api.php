@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Jadwal & Booking ──────────────────────────────────────────
     Route::get('/jadwal', [JadwalController::class, 'index']);
+    Route::get('/jadwal/mingguan', [JadwalController::class, 'getJadwalMingguan']);
     Route::get('/schedules/available', [JadwalController::class, 'getAvailableSchedules']);
     Route::get('/bookings', [BookingController::class, 'index']);
     Route::post('/bookings', [BookingController::class, 'store']);
@@ -47,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/layanan',       [LayananController::class, 'store']);
         Route::put('/layanan/{id}',   [LayananController::class, 'update']);
         Route::delete('/layanan/{id}', [LayananController::class, 'destroy']);
+         Route::get('/admin/jadwal-operasional', [JadwalController::class, 'getJadwalOperasional']);
 
         // Kelola petugas
         Route::get('/petugas',         [PetugasController::class, 'index']);

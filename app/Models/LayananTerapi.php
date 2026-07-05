@@ -14,7 +14,8 @@ class LayananTerapi extends Model
         'status',
         'deskripsi',
         'tarif',
-        'durasi'
+        'durasi',
+        'gambar'
     ];
 
     /**
