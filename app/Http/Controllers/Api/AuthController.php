@@ -25,21 +25,36 @@ class AuthController extends Controller
             'role'     => 'nullable|string|in:admin,petugas,pasien',
         ]);
 
-        $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'no_hp'    => $validated['no_hp'] ?? null,
-            'role'     => $validated['role'] ?? 'pasien',
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+            $user = User::create([
+                'name'     => $validated['name'],
+                'email'    => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'no_hp'    => $validated['no_hp'] ?? null,
+                'role'     => $validated['role'] ?? 'pasien',
+            ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+            if ($user->role === 'pasien') {
+                $user->pasien()->create([
+                    'no_hp'  => $validated['no_hp'] ?? null,
+                    'status' => 'pending',
+                ]);
 
-        return $this->success(
-            ['user' => $user, 'token' => $token],
-            'Registrasi berhasil.',
-            201
-        );
+                return $this->success(
+                    ['user' => $user->load('pasien')],
+                    'Pendaftaran berhasil. Silakan tunggu konfirmasi admin.',
+                    201
+                );
+            }
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return $this->success(
+                ['user' => $user, 'token' => $token],
+                'Registrasi berhasil.',
+                201
+            );
+        });
     }
 
     /**
@@ -58,10 +73,20 @@ class AuthController extends Controller
             return $this->error('Email atau password salah.', 401);
         }
 
+        if ($user->role === 'pasien') {
+            $pasien = $user->pasien;
+            if (!$pasien || $pasien->status === 'pending') {
+                return $this->error('Akun Anda sedang menunggu konfirmasi admin.', 403);
+            }
+            if ($pasien->status === 'ditolak') {
+                return $this->error('Akun Anda ditolak oleh admin.', 403);
+            }
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return $this->success(
-            ['user' => $user, 'token' => $token],
+            ['user' => $user->load('pasien'), 'token' => $token],
             'Login berhasil.'
         );
     }
@@ -123,4 +148,60 @@ class AuthController extends Controller
 
         return $this->success(null, 'Password berhasil diperbarui.');
     }
+
+    /**
+     * Admin: List pending patient registrations.
+     */
+    public function listPendingPasien(Request $request)
+    {
+        $pendingPasiens = \App\Models\Pasien::with('user')
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        return $this->success($pendingPasiens, 'Daftar pendaftaran pasien berhasil diambil.');
+    }
+
+    /**
+     * Admin: Confirm patient registration.
+     */
+    public function konfirmasiPasien(Request $request, int $id)
+    {
+        $pasien = \App\Models\Pasien::findOrFail($id);
+        $pasien->update(['status' => 'aktif']);
+
+        return $this->success($pasien->load('user'), 'Pendaftaran akun pasien berhasil dikonfirmasi.');
+    }
+
+    /**
+     * Admin: Reject patient registration.
+     */
+    public function tolakPasien(Request $request, int $id)
+    {
+        $pasien = \App\Models\Pasien::findOrFail($id);
+        $pasien->update(['status' => 'ditolak']);
+
+        return $this->success($pasien->load('user'), 'Pendaftaran akun pasien berhasil ditolak.');
+    }
+
+    /**
+     * Admin: List all patients.
+     */
+    // public function listAllPasien(Request $request)
+    // {
+    //     $pasiens = \App\Models\Pasien::with('user')
+    //         ->latest()
+    //         ->get();
+
+    //     return $this->success($pasiens, 'Daftar semua pasien berhasil diambil.');
+    // }
+    public function listAllPasien(Request $request)
+{
+    // Menggunakan paginate(10) untuk mengambil 10 data terbaru per halaman
+    $pasiens = \App\Models\Pasien::with('user')
+        ->latest()
+        ->paginate(10);
+
+    return $this->success($pasiens, 'Daftar semua pasien berhasil diambil.');
+}
 }

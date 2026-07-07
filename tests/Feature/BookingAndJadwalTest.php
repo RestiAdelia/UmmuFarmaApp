@@ -12,9 +12,10 @@ use Laravel\Sanctum\Sanctum;
 uses(DatabaseTransactions::class);
 
 beforeEach(function () {
+    /** @var \Tests\TestCase&object{user: \App\Models\User, petugas: \App\Models\User, layananPijat: \App\Models\LayananTerapi, layananBekam: \App\Models\LayananTerapi} $this */
     $this->user = User::factory()->create(['role' => 'pasien']);
     $this->petugas = User::factory()->create(['role' => 'petugas']);
-    
+
     $this->layananPijat = LayananTerapi::create([
         'nama_layanan' => 'Layanan Pijat',
         'status' => 'aktif',

@@ -43,6 +43,11 @@ class User extends Authenticatable
     public function isPasien(): bool   { return $this->role === 'pasien'; }
  
     // ── Relasi ───────────────────────────────────────────
+    public function pasien()
+    {
+        return $this->hasOne(Pasien::class);
+    }
+
     public function bookings()
     {
         return $this->hasMany(Booking::class);
