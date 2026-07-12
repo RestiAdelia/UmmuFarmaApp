@@ -18,11 +18,13 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'no_hp'    => 'nullable|string|max:20',
-            'role'     => 'nullable|string|in:admin,petugas,pasien',
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|email|unique:users,email',
+            'password'      => 'required|string|min:8|confirmed',
+            'no_hp'         => 'nullable|string|max:20',
+            'role'          => 'nullable|string|in:admin,petugas,pasien',
+            'nama_lengkap'  => 'nullable|string|max:255',
+            'jenis_kelamin' => 'nullable|string|in:laki-laki,perempuan',
         ]);
 
         return \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
@@ -36,8 +38,10 @@ class AuthController extends Controller
 
             if ($user->role === 'pasien') {
                 $user->pasien()->create([
-                    'no_hp'  => $validated['no_hp'] ?? null,
-                    'status' => 'pending',
+                    'no_hp'         => $validated['no_hp'] ?? null,
+                    'status'        => 'pending',
+                    'nama_lengkap'  => $validated['nama_lengkap'] ?? $validated['name'],
+                    'jenis_kelamin' => $validated['jenis_kelamin'] ?? null,
                 ]);
 
                 return $this->success(
@@ -106,7 +110,7 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
-        return $this->success($request->user(), 'Data user berhasil diambil.');
+        return $this->success($request->user()->load('pasien'), 'Data user berhasil diambil.');
     }
 
     /**
@@ -117,13 +121,29 @@ class AuthController extends Controller
         $user = $request->user();
         
         $validated = $request->validate([
-            'name'  => 'sometimes|required|string|max:255',
-            'no_hp' => 'sometimes|nullable|string|max:20',
+            'name'          => 'sometimes|required|string|max:255',
+            'no_hp'         => 'sometimes|nullable|string|max:20',
+            'nama_lengkap'  => 'sometimes|nullable|string|max:255',
+            'jenis_kelamin' => 'sometimes|nullable|string|in:laki-laki,perempuan',
         ]);
 
-        $user->update($validated);
+        $user->update([
+            'name'  => $validated['name'] ?? $user->name,
+            'no_hp' => $validated['no_hp'] ?? $user->no_hp,
+        ]);
 
-        return $this->success($user, 'Profil berhasil diperbarui.');
+        if ($user->role === 'pasien') {
+            $user->pasien()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'nama_lengkap'  => $validated['nama_lengkap'] ?? ($validated['name'] ?? ($user->pasien->nama_lengkap ?? $user->name)),
+                    'jenis_kelamin' => $validated['jenis_kelamin'] ?? ($user->pasien->jenis_kelamin ?? null),
+                    'no_hp'         => $validated['no_hp'] ?? ($user->no_hp ?? ($user->pasien->no_hp ?? null)),
+                ]
+            );
+        }
+
+        return $this->success($user->load('pasien'), 'Profil berhasil diperbarui.');
     }
 
     /**
@@ -196,12 +216,16 @@ class AuthController extends Controller
     //     return $this->success($pasiens, 'Daftar semua pasien berhasil diambil.');
     // }
     public function listAllPasien(Request $request)
-{
-    // Menggunakan paginate(10) untuk mengambil 10 data terbaru per halaman
-    $pasiens = \App\Models\Pasien::with('user')
-        ->latest()
-        ->paginate(10);
+    {
+        $paginated = \App\Models\Pasien::with('user')
+            ->latest()
+            ->paginate(10);
 
-    return $this->success($pasiens, 'Daftar semua pasien berhasil diambil.');
-}
+        return $this->success([
+            'data'         => $paginated->items(),
+            'current_page' => $paginated->currentPage(),
+            'last_page'    => $paginated->lastPage(),
+            'total'        => $paginated->total(),
+        ], 'Daftar semua pasien berhasil diambil.');
+    }
 }

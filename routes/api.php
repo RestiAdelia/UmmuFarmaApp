@@ -62,6 +62,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/admin/pendaftaran-pasien/{id}/konfirmasi', [AuthController::class, 'konfirmasiPasien']);
         Route::post('/admin/pendaftaran-pasien/{id}/tolak', [AuthController::class, 'tolakPasien']);
 
+        // Laporan Pemesanan
+        Route::get('/admin/laporan-pemesanan', [BookingController::class, 'getLaporanPemesanan']);
+
+        // Stats
+        Route::get('/admin/stats/bookings-today', [BookingController::class, 'getBookingStatsToday']);
+
         // Kelola jadwal
         Route::post('/jadwal/toggle', [JadwalController::class, 'toggleOperasional']);
     });

@@ -19,11 +19,19 @@ class BookingController extends Controller
      */
     public function index(Request $request)
     {
+        // Auto-expire: Tandai booking yg jadwalnya sudah lewat hari ini
+        Booking::where('user_id', $request->user()->id)
+            ->whereIn('status', ['confirmed', 'pending'])
+            ->whereHas('jadwal', function ($q) {
+                $q->where('tgl_jadwal', '<', now()->toDateString());
+            })
+            ->update(['status' => 'expired']);
+
         $bookings = Booking::with([
-                'jadwal:UniqueID,layanan_id,tgl_jadwal,jam_mulai,jam_berakhir,jk_target',
-                'jadwal.layanan:id,nama_layanan,durasi',
-                'ticket:id,booking_id,code_ticket,data_qr,cek_in,scan_at',
-            ])
+            'jadwal',
+            'jadwal.layanan',
+            'ticket',
+        ])
             ->where('user_id', $request->user()->id)
             ->orderByDesc('created_at')
             ->get();
@@ -165,6 +173,27 @@ class BookingController extends Controller
             return $this->error('Tiket sudah digunakan.', 422);
         }
 
+        // Validasi: check-in hanya bisa dilakukan di hari yang sama dengan jadwal
+        $booking = $tiket->booking;
+        if (!$booking) {
+            return $this->error('Data booking tidak ditemukan.', 404);
+        }
+
+        $jadwal = $booking->jadwal;
+        if ($jadwal) {
+            $tglJadwal = \Carbon\Carbon::parse($jadwal->tgl_jadwal)->toDateString();
+            $today = now()->toDateString();
+
+            if ($tglJadwal !== $today) {
+                $tglFormatted = \Carbon\Carbon::parse($tglJadwal)->translatedFormat('d F Y');
+                if ($tglJadwal > $today) {
+                    return $this->error("Check-in belum dapat dilakukan. Jadwal terapi adalah pada tanggal $tglFormatted.", 422);
+                } else {
+                    return $this->error("Tiket ini sudah melewati tanggal jadwal ($tglFormatted) dan tidak dapat digunakan.", 422);
+                }
+            }
+        }
+
         return DB::transaction(function () use ($tiket, $request) {
             $tiket->update([
                 'cek_in'  => true,
@@ -179,5 +208,50 @@ class BookingController extends Controller
 
             return $this->success($tiket->load('booking'), 'Check-in berhasil. Selamat menjalani terapi.');
         });
+    }
+
+    /**
+     * Admin: Laporan Pemesanan
+     */
+    public function getLaporanPemesanan(Request $request)
+    {
+        $query = Booking::with([
+            'user:id,name,email',
+            'jadwal.layanan:id,nama_layanan,durasi',
+            'ticket:id,booking_id,code_ticket,cek_in,scan_at'
+        ])->orderByDesc('created_at');
+
+        // Filter berdasarkan tanggal jika ada
+        if ($request->has('start_date') && $request->has('end_date')) {
+            $startDate = $request->start_date . ' 00:00:00';
+            $endDate = $request->end_date . ' 23:59:59';
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        }
+
+        $bookings = $query->get();
+
+        // Kalkulasi Statistik
+        $summary = [
+            'total' => $bookings->count(),
+            'selesai' => $bookings->where('status', 'done')->count(),
+            'menunggu' => $bookings->whereIn('status', ['pending', 'confirmed'])->count(),
+            'batal' => $bookings->where('status', 'canceled')->count(),
+        ];
+
+        return $this->success([
+            'summary' => $summary,
+            'list' => $bookings
+        ], 'Laporan pemesanan berhasil diambil.');
+    }
+    public function getBookingStatsToday(Request $request)
+    {
+        $today = now()->toDateString();
+        
+        // Menghitung booking yang masuk (dibuat) hari ini
+        $total = Booking::whereDate('created_at', $today)->count();
+        
+        return $this->success([
+            'total_booking_today' => $total
+        ], 'Statistik booking hari ini berhasil diambil.');
     }
 }

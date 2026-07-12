@@ -11,6 +11,8 @@ class Pasien extends Model
 
     protected $fillable = [
         'user_id',
+        'nama_lengkap',
+        'jenis_kelamin',
         'no_hp',
         'status',
     ];
