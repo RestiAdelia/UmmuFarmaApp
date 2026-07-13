@@ -9,6 +9,11 @@ use Illuminate\Support\Str;
 class Tiket extends Model
 {
     use HasFactory;
+
+    protected function serializeDate(\DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
  
     protected $table = 'table_tickets';
 

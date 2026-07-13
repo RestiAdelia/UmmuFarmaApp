@@ -10,6 +10,11 @@ class Jadwal extends Model
 {
     use HasFactory;
 
+    protected function serializeDate(\DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
+
     protected $table = 'jadwal';
     protected $primaryKey = 'UniqueID';
     public $incrementing = false;

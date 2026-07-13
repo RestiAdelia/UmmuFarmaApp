@@ -25,7 +25,7 @@ class BookingController extends Controller
             ->whereHas('jadwal', function ($q) {
                 $q->where('tgl_jadwal', '<', now()->toDateString());
             })
-            ->update(['status' => 'expired']);
+            ->update(['status' => 'cancelled']);
 
         $bookings = Booking::with([
             'jadwal',
@@ -67,6 +67,14 @@ class BookingController extends Controller
             // 3. Cek apakah gender pasien sesuai dengan target jadwal
             if ($jadwal->jk_target !== 'semua' && $jadwal->jk_target !== $request->jenis_kelamin) {
                 return $this->error('Jadwal ini khusus untuk ' . $jadwal->jk_target, 422);
+            }
+
+            // 3.5 Cek apakah jam sudah terlewat jika booking hari ini
+            if ($jadwal->tgl_jadwal->isToday()) {
+                $currentTime = \Carbon\Carbon::now()->format('H:i:s');
+                if ($jadwal->jam_mulai <= $currentTime) {
+                    return $this->error('Jadwal ini sudah terlewat (waktu operasional sudah lewat).', 422);
+                }
             }
 
             // 4. LOGIKA UTAMA: Cek kuota lintas layanan
@@ -247,11 +255,17 @@ class BookingController extends Controller
     {
         $today = now()->toDateString();
         
-        // Menghitung booking yang masuk (dibuat) hari ini
-        $total = Booking::whereDate('created_at', $today)->count();
+        // Menghitung booking berdasarkan jadwal terapi hari ini
+        $total = Booking::whereHas('jadwal', function ($query) use ($today) {
+            $query->whereDate('tgl_jadwal', $today);
+        })->count();
+        
+        // Menghitung pasien yang masih pending
+        $pendingPasienCount = \App\Models\Pasien::where('status', 'pending')->count();
         
         return $this->success([
-            'total_booking_today' => $total
+            'total_booking_today' => $total,
+            'pending_pasien_count' => $pendingPasienCount
         ], 'Statistik booking hari ini berhasil diambil.');
     }
 }

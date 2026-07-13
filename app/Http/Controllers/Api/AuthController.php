@@ -218,6 +218,7 @@ class AuthController extends Controller
     public function listAllPasien(Request $request)
     {
         $paginated = \App\Models\Pasien::with('user')
+            ->where('status', 'aktif')
             ->latest()
             ->paginate(10);
 

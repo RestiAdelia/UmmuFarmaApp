@@ -25,4 +25,12 @@ class LayananTerapi extends Model
     {
         return $this->hasMany(Jadwal::class, 'layanan_id');
     }
+
+    /**
+     * Relasi ke Bookings melalui Jadwal
+     */
+    public function bookings()
+    {
+        return $this->hasManyThrough(Booking::class, Jadwal::class, 'layanan_id', 'jadwal_id', 'id', 'UniqueID');
+    }
 }

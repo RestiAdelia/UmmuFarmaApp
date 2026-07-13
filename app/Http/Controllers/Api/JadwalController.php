@@ -24,25 +24,31 @@ class JadwalController extends Controller
             'gender'     => 'required|in:laki-laki,perempuan',
         ]);
 
-        $jadwal = Jadwal::where('layanan_id', $request->layanan_id)
+        $query = Jadwal::where('layanan_id', $request->layanan_id)
             ->where('tgl_jadwal', $request->tanggal)
             ->where('is_aktif', true)
             ->where('jadwal_terkunci', false)
             ->whereColumn('jml_terjadwal', '<', 'kuota')
-            ->where(function($query) use ($request) {
-                $query->where('jk_target', $request->gender)
-                      ->orWhere('jk_target', 'semua');
+            ->where(function($q) use ($request) {
+                $q->where('jk_target', $request->gender)
+                  ->orWhere('jk_target', 'semua');
             })
-            ->whereNotExists(function ($query) use ($request) {
-                $query->select(DB::raw(1))
+            ->whereNotExists(function ($q) use ($request) {
+                $q->select(DB::raw(1))
                     ->from('bookings')
                     ->join('jadwal as j2', 'bookings.jadwal_id', '=', 'j2.UniqueID')
                     ->whereColumn('j2.tgl_jadwal', 'jadwal.tgl_jadwal')
                     ->whereColumn('j2.jam_mulai', 'jadwal.jam_mulai')
                     ->where('bookings.jenis_kelamin', $request->gender)
                     ->whereIn('bookings.status', ['confirmed', 'pending']);
-            })
-            ->get();
+            });
+
+        if ($request->tanggal === \Carbon\Carbon::today()->format('Y-m-d')) {
+            $currentTime = \Carbon\Carbon::now()->format('H:i:s');
+            $query->where('jam_mulai', '>', $currentTime);
+        }
+
+        $jadwal = $query->get();
 
         return $this->success($jadwal, 'Daftar jadwal tersedia berhasil diambil.');
     }
@@ -58,17 +64,22 @@ class JadwalController extends Controller
             'gender'     => 'required|in:laki-laki,perempuan',
         ]);
 
-        $jadwal = Jadwal::where('layanan_id', $request->layanan_id)
+        $query = Jadwal::where('layanan_id', $request->layanan_id)
             ->where('tgl_jadwal', $request->tanggal)
             ->where('is_aktif', true)
             ->where('jadwal_terkunci', false)
             ->whereColumn('jml_terjadwal', '<', 'kuota')
-            ->where(function($query) use ($request) {
-                $query->where('jk_target', $request->gender)
-                      ->orWhere('jk_target', 'semua');
-            })
-            ->orderBy('jam_mulai')
-            ->get();
+            ->where(function($q) use ($request) {
+                $q->where('jk_target', $request->gender)
+                  ->orWhere('jk_target', 'semua');
+            });
+
+        if ($request->tanggal === \Carbon\Carbon::today()->format('Y-m-d')) {
+            $currentTime = \Carbon\Carbon::now()->format('H:i:s');
+            $query->where('jam_mulai', '>', $currentTime);
+        }
+
+        $jadwal = $query->orderBy('jam_mulai')->get();
 
         return $this->success($jadwal, 'Daftar jadwal tersedia berhasil diambil.');
     }

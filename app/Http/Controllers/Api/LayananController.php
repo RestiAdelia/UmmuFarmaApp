@@ -9,6 +9,7 @@ use App\Http\Requests\Layanan\StoreLayananRequest;
 use App\Http\Requests\Layanan\UpdateLayananRequest;
 use App\Http\Resources\LayananResource;
 use App\Helpers\ApiResponse;
+use Illuminate\Support\Facades\Storage;
 
 class LayananController extends Controller
 {
@@ -19,13 +20,14 @@ class LayananController extends Controller
      */
     public function index(Request $request)
     {
-        $query = LayananTerapi::query();
+        // Hitung total booking untuk setiap layanan dan urutkan dari yang terbanyak
+        $query = LayananTerapi::withCount('bookings');
 
         if (!$request->user() || $request->user()->isPasien()) {
             $query->where('status', 'aktif');
         }
 
-        $layanan = $query->latest()->get();
+        $layanan = $query->orderByDesc('bookings_count')->get();
 
         return $this->success(
             LayananResource::collection($layanan),
@@ -39,7 +41,7 @@ class LayananController extends Controller
     public function show(int $id)
     {
         $layanan = LayananTerapi::findOrFail($id);
-        
+
         return $this->success(
             new LayananResource($layanan),
             'Detail layanan berhasil diambil.'
@@ -57,7 +59,7 @@ class LayananController extends Controller
         }
 
         $layanan = LayananTerapi::create($data);
-        
+
         return $this->success(
             new LayananResource($layanan),
             'Layanan berhasil ditambahkan.',
@@ -73,14 +75,14 @@ class LayananController extends Controller
         $layanan = LayananTerapi::findOrFail($id);
         $data = $request->validated();
         if ($request->hasFile('gambar')) {
-            if ($layanan->gambar && \Storage::disk('public')->exists($layanan->gambar)) {
-                \Storage::disk('public')->delete($layanan->gambar);
+            if ($layanan->gambar && Storage::disk('public')->exists($layanan->gambar)) {
+                Storage::disk('public')->delete($layanan->gambar);
             }
             $data['gambar'] = $request->file('gambar')->store('layanan', 'public');
         }
 
         $layanan->update($data);
-        
+
         return $this->success(
             new LayananResource($layanan),
             'Layanan berhasil diperbarui.'
@@ -102,7 +104,7 @@ class LayananController extends Controller
         }
 
         $layanan->delete();
-        
+
         return $this->success(
             null,
             'Layanan berhasil dihapus.'
