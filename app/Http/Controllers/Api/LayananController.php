@@ -96,9 +96,9 @@ class LayananController extends Controller
     {
         $layanan = LayananTerapi::findOrFail($id);
 
-        if ($layanan->jadwal()->exists()) {
+        if ($layanan->bookings()->exists()) {
             return $this->error(
-                'Layanan tidak bisa dihapus karena masih memiliki jadwal.',
+                'Layanan tidak bisa dihapus karena masih memiliki riwayat atau jadwal booking pemesanan.',
                 422
             );
         }
