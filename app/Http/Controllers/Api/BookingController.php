@@ -19,11 +19,11 @@ class BookingController extends Controller
      */
     public function index(Request $request)
     {
-        // Auto-expire: Tandai booking yg jadwalnya sudah lewat hari ini
+        // Auto-expire: Tandai booking yg jadwal dan jamnya sudah lewat dari waktu saat ini
         Booking::where('user_id', $request->user()->id)
             ->whereIn('status', ['confirmed', 'pending'])
             ->whereHas('jadwal', function ($q) {
-                $q->where('tgl_jadwal', '<', now()->toDateString());
+                $q->whereRaw("CONCAT(tgl_jadwal, ' ', jam_mulai) < ?", [now()->toDateTimeString()]);
             })
             ->update(['status' => 'cancelled']);
 
@@ -223,17 +223,26 @@ class BookingController extends Controller
      */
     public function getLaporanPemesanan(Request $request)
     {
+        // Auto-expire global: Batalkan otomatis semua tiket aktif yang tanggal dan jamnya sudah lewat dari saat ini
+        Booking::whereIn('status', ['confirmed', 'pending'])
+            ->whereHas('jadwal', function ($q) {
+                $q->whereRaw("CONCAT(tgl_jadwal, ' ', jam_mulai) < ?", [now()->toDateTimeString()]);
+            })
+            ->update(['status' => 'cancelled']);
+
         $query = Booking::with([
             'user:id,name,email',
             'jadwal.layanan:id,nama_layanan,durasi',
             'ticket:id,booking_id,code_ticket,cek_in,scan_at'
         ])->orderByDesc('created_at');
 
-        // Filter berdasarkan tanggal jika ada
+        // Filter berdasarkan tanggal jika ada (berdasarkan tanggal jadwal terapi)
         if ($request->has('start_date') && $request->has('end_date')) {
             $startDate = $request->start_date . ' 00:00:00';
             $endDate = $request->end_date . ' 23:59:59';
-            $query->whereBetween('created_at', [$startDate, $endDate]);
+            $query->whereHas('jadwal', function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('tgl_jadwal', [$startDate, $endDate]);
+            });
         }
 
         $bookings = $query->get();
@@ -243,7 +252,7 @@ class BookingController extends Controller
             'total' => $bookings->count(),
             'selesai' => $bookings->where('status', 'done')->count(),
             'menunggu' => $bookings->whereIn('status', ['pending', 'confirmed'])->count(),
-            'batal' => $bookings->where('status', 'canceled')->count(),
+            'batal' => $bookings->whereIn('status', ['canceled', 'cancelled', 'expired'])->count(),
         ];
 
         return $this->success([
@@ -254,15 +263,15 @@ class BookingController extends Controller
     public function getBookingStatsToday(Request $request)
     {
         $today = now()->toDateString();
-        
+
         // Menghitung booking berdasarkan jadwal terapi hari ini
         $total = Booking::whereHas('jadwal', function ($query) use ($today) {
             $query->whereDate('tgl_jadwal', $today);
         })->count();
-        
+
         // Menghitung pasien yang masih pending
         $pendingPasienCount = \App\Models\Pasien::where('status', 'pending')->count();
-        
+
         return $this->success([
             'total_booking_today' => $total,
             'pending_pasien_count' => $pendingPasienCount

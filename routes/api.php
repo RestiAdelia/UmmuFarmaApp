@@ -41,6 +41,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:petugas,admin')->group(function () {
         Route::post('/check-in', [BookingController::class, 'checkIn']);
         Route::get('/admin/pasien', [AuthController::class, 'listAllPasien']);
+        
+        // Laporan Pemesanan (Dapat diakses Admin dan Petugas untuk jadwal hari ini)
+        Route::get('/admin/laporan-pemesanan', [BookingController::class, 'getLaporanPemesanan']);
     });
 
     // ── Admin Only ──────────────────────────────────────────────────
@@ -61,9 +64,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/pendaftaran-pasien', [AuthController::class, 'listPendingPasien']);
         Route::post('/admin/pendaftaran-pasien/{id}/konfirmasi', [AuthController::class, 'konfirmasiPasien']);
         Route::post('/admin/pendaftaran-pasien/{id}/tolak', [AuthController::class, 'tolakPasien']);
-
-        // Laporan Pemesanan
-        Route::get('/admin/laporan-pemesanan', [BookingController::class, 'getLaporanPemesanan']);
 
         // Stats
         Route::get('/admin/stats/bookings-today', [BookingController::class, 'getBookingStatsToday']);
