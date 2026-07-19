@@ -37,6 +37,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings/store', [BookingController::class, 'storeBooking']);
     Route::get('/bookings/{id}', [BookingController::class, 'show']);
 
+    // ── Notifications ─────────────────────────────────────────────
+    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'getUnreadNotifications']);
+    Route::get('/notifications/all', [\App\Http\Controllers\Api\NotificationController::class, 'getAllNotifications']);
+    Route::post('/notifications/{id}/mark-read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
+
     // ── Petugas Only ────────────────────────────────────────────────
     Route::middleware('role:petugas,admin')->group(function () {
         Route::post('/check-in', [BookingController::class, 'checkIn']);

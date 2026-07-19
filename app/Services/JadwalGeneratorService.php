@@ -21,7 +21,7 @@ class JadwalGeneratorService
     public function generateUntukLayanan(LayananTerapi $layanan, ?Carbon $startDate = null, ?int $jumlahHari = null): int
     {
         $startDate = $startDate ?? Carbon::today();
-        $jumlahHari = $jumlahHari ?? 60;
+        $jumlahHari = $jumlahHari ?? 7;
         
         $genders = ['laki-laki', 'perempuan'];
         $createdCount = 0;
@@ -36,6 +36,11 @@ class JadwalGeneratorService
 
             // Jam operasional 08:00 sampai 22:00 (slot terakhir mulai jam 21:00)
             for ($hour = 8; $hour < 22; $hour++) {
+                // Lewati jam istirahat (12:00-13:00 dan 18:00-19:00)
+                if ($hour === 12 || $hour === 18) {
+                    continue;
+                }
+
                 $jamMulai = sprintf('%02d:00:00', $hour);
                 $jamSelesai = sprintf('%02d:00:00', $hour + 1);
 

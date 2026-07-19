@@ -107,29 +107,76 @@ class JadwalController extends Controller
                 "before_or_equal:$maxDate" // Maksimal seminggu ke depan
             ],
             'jam_mulai' => 'required|date_format:H:i:s',
-            'is_aktif'  => 'required|boolean'
+            'is_aktif'  => 'required|boolean',
+            'force_close' => 'sometimes|boolean'
         ], [
             // Custom pesan error agar user/admin paham batasannya
             'tgl_jadwal.after_or_equal' => 'Tanggal tidak boleh di masa lalu.',
             'tgl_jadwal.before_or_equal' => 'Jadwal hanya bisa diatur untuk maksimal 7 hari ke depan.',
         ]);
 
-        // 3. Eksekusi Update LINTAS SEMUA LAYANAN (tanpa filter layanan_id)
-        // Tetap hanya mengupdate jadwal yang belum ada booking sama sekali
-        // (jml_terjadwal = 0), agar slot yang sudah dipesan pasien di layanan
-        // manapun tidak ikut berubah statusnya.
-        $updatedCount = Jadwal::where('tgl_jadwal', $request->tgl_jadwal)
-            ->where('jam_mulai', $request->jam_mulai)
-            ->where('jml_terjadwal', 0)
-            ->update(['is_aktif' => $request->is_aktif]);
+        $isForceClose = $request->boolean('force_close') && !$request->boolean('is_aktif');
 
-        // 4. Respon yang informatif
-        if ($updatedCount === 0) {
+        $jadwalsQuery = Jadwal::where('tgl_jadwal', $request->tgl_jadwal)
+            ->where('jam_mulai', $request->jam_mulai);
+
+        if (!$isForceClose) {
+            // 3. Eksekusi Update LINTAS SEMUA LAYANAN (tanpa filter layanan_id)
+            // Tetap hanya mengupdate jadwal yang belum ada booking sama sekali
+            $jadwalsQuery->where('jml_terjadwal', 0);
+        }
+
+        $affectedJadwals = $jadwalsQuery->get();
+
+        // 4. Respon jika kosong
+        if ($affectedJadwals->isEmpty()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Tidak ada slot tersedia yang bisa diubah pada jam tersebut (mungkin sudah dipesan atau jadwal tidak ada).'
+                'message' => 'Tidak ada slot tersedia yang bisa diubah pada jam tersebut (mungkin sudah dipesan atau jadwal tidak ada).',
+                'debug' => [
+                    'tgl_jadwal' => $request->tgl_jadwal,
+                    'jam_mulai' => $request->jam_mulai,
+                    'is_aktif' => $request->boolean('is_aktif'),
+                    'force_close' => $request->boolean('force_close'),
+                    'isForceClose_var' => $isForceClose
+                ]
             ], 404);
         }
+
+        $jadwalIds = $affectedJadwals->pluck('UniqueID')->toArray();
+        $cancelledBookingsCount = 0;
+
+        if ($isForceClose) {
+            $bookings = \App\Models\Booking::whereIn('jadwal_id', $jadwalIds)
+                ->whereIn('status', ['pending', 'confirmed'])
+                ->get();
+            
+            foreach ($bookings as $booking) {
+                $statusFrom = $booking->status;
+                $booking->status = 'cancelled_by_admin';
+                $booking->save();
+                
+                if (method_exists($booking, 'logStatus')) {
+                    $booking->logStatus($statusFrom, 'cancelled_by_admin', $request->user()->id ?? 0);
+                }
+                
+                if ($booking->user) {
+                    $booking->user->notify(new \App\Notifications\BookingCancelledNotification(
+                        $booking->id,
+                        $request->tgl_jadwal,
+                        $request->jam_mulai
+                    ));
+                }
+                $cancelledBookingsCount++;
+            }
+        }
+
+        $updateData = ['is_aktif' => $request->boolean('is_aktif')];
+        if ($isForceClose) {
+            $updateData['jml_terjadwal'] = 0;
+        }
+
+        Jadwal::whereIn('UniqueID', $jadwalIds)->update($updateData);
 
         return response()->json([
             'status' => 'success',
@@ -138,7 +185,8 @@ class JadwalController extends Controller
                 'tanggal' => $request->tgl_jadwal,
                 'jam' => $request->jam_mulai,
                 'status_aktif' => $request->is_aktif,
-                'total_layanan_terpengaruh' => $updatedCount
+                'total_layanan_terpengaruh' => count($jadwalIds),
+                'total_tiket_dibatalkan' => $cancelledBookingsCount
             ]
         ]);
     }
@@ -167,7 +215,7 @@ class JadwalController extends Controller
         $grouped = $rows->groupBy('jam_mulai')->map(function ($items, $jamMulai) {
             return [
                 'jam_mulai'      => $jamMulai,
-                'jam_selesai'    => $items->first()->jam_selesai,
+                'jam_selesai'    => $items->first()->jam_berakhir,
                 'is_aktif'       => $items->every(fn ($i) => (bool) $i->is_aktif),
                 'kuota'          => $items->sum('kuota'),
                 'jml_terjadwal'  => $items->sum('jml_terjadwal'),
