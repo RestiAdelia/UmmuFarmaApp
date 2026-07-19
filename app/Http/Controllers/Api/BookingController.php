@@ -253,6 +253,7 @@ class BookingController extends Controller
             'selesai' => $bookings->where('status', 'done')->count(),
             'menunggu' => $bookings->whereIn('status', ['pending', 'confirmed'])->count(),
             'batal' => $bookings->whereIn('status', ['canceled', 'cancelled', 'expired'])->count(),
+            'batal_admin' => $bookings->where('status', 'cancelled_by_admin')->count(),
         ];
 
         return $this->success([
