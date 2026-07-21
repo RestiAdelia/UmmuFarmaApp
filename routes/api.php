@@ -26,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me',      [AuthController::class, 'me']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/profile/photo', [AuthController::class, 'updatePhoto']);
     Route::put('/update-password', [AuthController::class, 'updatePassword']);
 
     // ── Jadwal & Booking ──────────────────────────────────────────

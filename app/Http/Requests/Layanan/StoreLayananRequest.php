@@ -19,6 +19,7 @@ class StoreLayananRequest extends FormRequest
             'status'       => 'nullable|in:aktif,nonaktif',
             'deskripsi'    => 'nullable|string',
             'durasi'       => 'required|integer|min:1',
+            'tarif'        => 'required|numeric|min:0',
         ];
     }
 }

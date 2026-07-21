@@ -19,6 +19,7 @@ class UpdateLayananRequest extends FormRequest
             'status'       => 'sometimes|required|in:aktif,nonaktif',
             'deskripsi'    => 'nullable|string',
             'durasi'       => 'sometimes|required|integer|min:1',
+            'tarif'        => 'sometimes|required|numeric|min:0',
         ];
     }
 }

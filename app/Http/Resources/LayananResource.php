@@ -30,6 +30,7 @@ class LayananResource extends JsonResource
             'status' => $this->status,
             'deskripsi' => $this->deskripsi,
             'durasi' => (int) $this->durasi,
+            'tarif' => (float) $this->tarif,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use App\Helpers\ApiResponse;
 
 class AuthController extends Controller
@@ -144,6 +145,36 @@ class AuthController extends Controller
         }
 
         return $this->success($user->load('pasien'), 'Profil berhasil diperbarui.');
+    }
+
+    /**
+     * POST /api/profile/photo
+     */
+    public function updatePhoto(Request $request)
+    {
+        $request->validate([
+            'foto_profil' => 'required|image|mimes:jpeg,png,jpg|max:5120', // max 5MB
+        ]);
+
+        $user = $request->user();
+
+        if ($request->hasFile('foto_profil')) {
+            // Delete old photo if exists
+            if ($user->foto_profil) {
+                $oldPath = str_replace(url('storage') . '/', '', $user->foto_profil);
+                Storage::disk('public')->delete($oldPath);
+            }
+
+            $file = $request->file('foto_profil');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('profiles', $filename, 'public');
+
+            $user->update([
+                'foto_profil' => url('storage/' . $path)
+            ]);
+        }
+
+        return $this->success($user->load('pasien'), 'Foto profil berhasil diperbarui.');
     }
 
     /**

@@ -18,6 +18,7 @@ return new class extends Migration
             $table->enum('status', ['aktif', 'nonaktif'])->default('aktif');
             $table->text('deskripsi')->nullable();
             $table->integer('durasi')->default(60)->comment('Durasi dalam menit');
+            $table->decimal('tarif', 12, 2)->default(0)->comment('Tarif / Harga layanan');
             $table->timestamps();
         });
     }

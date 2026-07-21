@@ -232,7 +232,7 @@ class BookingController extends Controller
 
         $query = Booking::with([
             'user:id,name,email',
-            'jadwal.layanan:id,nama_layanan,durasi',
+            'jadwal.layanan:id,nama_layanan,durasi,tarif',
             'ticket:id,booking_id,code_ticket,cek_in,scan_at'
         ])->orderByDesc('created_at');
 
@@ -254,6 +254,9 @@ class BookingController extends Controller
             'menunggu' => $bookings->whereIn('status', ['pending', 'confirmed'])->count(),
             'batal' => $bookings->whereIn('status', ['canceled', 'cancelled', 'expired'])->count(),
             'batal_admin' => $bookings->where('status', 'cancelled_by_admin')->count(),
+            'total_pendapatan' => $bookings->where('status', 'done')->sum(function($booking) {
+                return $booking->jadwal->layanan->tarif ?? 0;
+            }),
         ];
 
         return $this->success([
