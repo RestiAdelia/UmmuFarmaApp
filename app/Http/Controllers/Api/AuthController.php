@@ -19,13 +19,21 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'name'          => 'required|string|max:255',
+            'name'          => 'required|string|max:60',
             'email'         => 'required|email|unique:users,email',
             'password'      => 'required|string|min:8|confirmed',
             'no_hp'         => 'nullable|string|max:20',
             'role'          => 'nullable|string|in:admin,petugas,pasien',
-            'nama_lengkap'  => 'nullable|string|max:255',
+            'nama_lengkap'  => 'nullable|string|max:60',
             'jenis_kelamin' => 'nullable|string|in:laki-laki,perempuan',
+        ], [
+            'name.required' => 'Nama wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
+            'email.unique' => 'Email ini sudah terdaftar. Silakan gunakan email lain.',
+            'password.required' => 'Kata sandi wajib diisi.',
+            'password.min' => 'Kata sandi minimal harus 8 karakter.',
+            'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
         ]);
 
         return \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
@@ -45,8 +53,10 @@ class AuthController extends Controller
                     'jenis_kelamin' => $validated['jenis_kelamin'] ?? null,
                 ]);
 
+                $token = $user->createToken('auth_token')->plainTextToken;
+
                 return $this->success(
-                    ['user' => $user->load('pasien')],
+                    ['user' => $user->load('pasien'), 'token' => $token],
                     'Pendaftaran berhasil. Silakan tunggu konfirmasi admin.',
                     201
                 );
@@ -122,9 +132,9 @@ class AuthController extends Controller
         $user = $request->user();
         
         $validated = $request->validate([
-            'name'          => 'sometimes|required|string|max:255',
+            'name'          => 'sometimes|required|string|max:60',
             'no_hp'         => 'sometimes|nullable|string|max:20',
-            'nama_lengkap'  => 'sometimes|nullable|string|max:255',
+            'nama_lengkap'  => 'sometimes|nullable|string|max:60',
             'jenis_kelamin' => 'sometimes|nullable|string|in:laki-laki,perempuan',
         ]);
 

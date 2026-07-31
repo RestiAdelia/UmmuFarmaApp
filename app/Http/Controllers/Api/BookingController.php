@@ -46,7 +46,7 @@ class BookingController extends Controller
     {
         $request->validate([
             'jadwal_id'     => 'required|exists:jadwal,UniqueID',
-            'nama_pasien'   => 'required|string|max:255',
+            'nama_pasien'   => 'required|string|max:60',
             'no_hp'         => 'required|string|max:20',
             'jenis_kelamin' => 'required|in:laki-laki,perempuan',
         ]);

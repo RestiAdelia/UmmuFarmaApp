@@ -28,7 +28,7 @@ class PetugasController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'     => 'required|string|max:255',
+            'name'     => 'required|string|max:60',
             'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
             'no_hp'    => 'nullable|string|max:20',
@@ -53,7 +53,7 @@ class PetugasController extends Controller
         $user = User::where('role', 'petugas')->findOrFail($id);
         
         $validated = $request->validate([
-            'name'     => 'sometimes|required|string|max:255',
+            'name'     => 'sometimes|required|string|max:60',
             'email'    => 'sometimes|required|email|unique:users,email,' . $id,
             'password' => 'nullable|string|min:8',
             'no_hp'    => 'sometimes|nullable|string|max:20',

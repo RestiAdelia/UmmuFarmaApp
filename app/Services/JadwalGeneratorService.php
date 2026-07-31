@@ -22,21 +22,18 @@ class JadwalGeneratorService
     {
         $startDate = $startDate ?? Carbon::today();
         $jumlahHari = $jumlahHari ?? 7;
-        
+
         $genders = ['laki-laki', 'perempuan'];
         $createdCount = 0;
 
         for ($i = 0; $i < $jumlahHari; $i++) {
             $targetDate = $startDate->copy()->addDays($i);
 
-            // Skip hari Jumat (libur)
+            // jumat libur)
             if ($targetDate->isFriday()) {
                 continue;
             }
-
-            // Jam operasional 08:00 sampai 22:00 (slot terakhir mulai jam 21:00)
-            for ($hour = 8; $hour < 22; $hour++) {
-                // Lewati jam istirahat (12:00-13:00 dan 18:00-19:00)
+            for ($hour = 9; $hour < 22; $hour++) {
                 if ($hour === 12 || $hour === 18) {
                     continue;
                 }

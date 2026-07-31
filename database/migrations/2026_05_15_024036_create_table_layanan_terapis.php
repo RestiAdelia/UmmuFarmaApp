@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('layanan_terapis', function (Blueprint $table) {
             $table->id();
-            $table->string('nama_layanan');
-            $table->string('gambar')->nullable();
+            $table->string('nama_layanan', 60);
+            $table->string('gambar', 255)->nullable();
             $table->enum('status', ['aktif', 'nonaktif'])->default('aktif');
             $table->text('deskripsi')->nullable();
             $table->integer('durasi')->default(60)->comment('Durasi dalam menit');

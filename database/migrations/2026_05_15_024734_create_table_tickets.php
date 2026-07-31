@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('table_tickets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('booking_id')->unique()->constrained('bookings')->onDelete('cascade');
-            $table->string('code_ticket')->unique();
+            $table->string('code_ticket', 50)->unique();
             $table->text('data_qr');
             $table->boolean('cek_in')->default(false);
             $table->timestamp('scan_at')->nullable();

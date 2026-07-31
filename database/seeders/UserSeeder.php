@@ -34,16 +34,5 @@ class UserSeeder extends Seeder
                 'no_hp' => '081234567891',
             ]
         );
-
-        // Pasien (Contoh)
-        User::updateOrCreate(
-            ['email' => 'pasien@gmail.com'],
-            [
-                'name' => 'Pasien UmmuFarma',
-                'password' => Hash::make('password'),
-                'role' => 'pasien',
-                'no_hp' => '081234567892',
-            ]
-        );
     }
 }

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->uuid('jadwal_id');
             $table->foreign('jadwal_id')->references('UniqueID')->on('jadwal')->onDelete('cascade');
-            $table->string('nama_pasien');
+            $table->string('nama_pasien', 60);
             $table->string('no_hp', 20)->nullable();
             $table->enum('jenis_kelamin', ['laki-laki', 'perempuan']);
             $table->boolean('jk_cocok')->default(true);
