@@ -34,6 +34,22 @@ class LayananController extends Controller
             'Daftar layanan berhasil diambil.'
         );
     }
+    
+    /**
+     * Display ALL resources (Admin only).
+     */
+    public function indexAdmin(Request $request)
+    {
+        $layanan = LayananTerapi::withCount('bookings')
+                    ->orderByRaw("status = 'aktif' DESC")
+                    ->orderByDesc('bookings_count')
+                    ->get();
+
+        return $this->success(
+            LayananResource::collection($layanan),
+            'Daftar semua layanan (termasuk nonaktif) berhasil diambil.'
+        );
+    }
 
     /**
      * Display the specified resource.

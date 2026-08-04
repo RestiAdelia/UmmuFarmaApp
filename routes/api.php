@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ── Admin Only ──────────────────────────────────────────────────
     Route::middleware('role:admin')->group(function () {
         // Kelola layanan
+        Route::get('/admin/layanan',  [LayananController::class, 'indexAdmin']);
         Route::post('/layanan',       [LayananController::class, 'store']);
         Route::put('/layanan/{id}',   [LayananController::class, 'update']);
         Route::delete('/layanan/{id}', [LayananController::class, 'destroy']);
