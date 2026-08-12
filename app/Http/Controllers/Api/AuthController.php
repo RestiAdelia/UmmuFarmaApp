@@ -245,17 +245,6 @@ class AuthController extends Controller
         return $this->success($pasien->load('user'), 'Pendaftaran akun pasien berhasil ditolak.');
     }
 
-    /**
-     * Admin: List all patients.
-     */
-    // public function listAllPasien(Request $request)
-    // {
-    //     $pasiens = \App\Models\Pasien::with('user')
-    //         ->latest()
-    //         ->get();
-
-    //     return $this->success($pasiens, 'Daftar semua pasien berhasil diambil.');
-    // }
     public function listAllPasien(Request $request)
     {
         $paginated = \App\Models\Pasien::with('user')

@@ -67,7 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/petugas/{id}',    [PetugasController::class, 'update']);
         Route::delete('/petugas/{id}', [PetugasController::class, 'destroy']);
 
-        // Kelola pendaftaran akun pasien
+        // Kelola pendaftaran akun pasien 
         Route::get('/admin/pendaftaran-pasien', [AuthController::class, 'listPendingPasien']);
         Route::post('/admin/pendaftaran-pasien/{id}/konfirmasi', [AuthController::class, 'konfirmasiPasien']);
         Route::post('/admin/pendaftaran-pasien/{id}/tolak', [AuthController::class, 'tolakPasien']);

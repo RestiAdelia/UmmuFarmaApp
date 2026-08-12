@@ -37,7 +37,6 @@ class Tiket extends Model
         return strtoupper('TKT-' . Str::random(8));
     }
  
-    // 
     public function booking()
     {
         return $this->belongsTo(Booking::class);

@@ -10,6 +10,6 @@ Artisan::command('inspire', function () {
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('jadwal:generate')
-    ->dailyAt('00:30')
+    ->dailyAt('00:00')
     ->onOneServer()
     ->withoutOverlapping();

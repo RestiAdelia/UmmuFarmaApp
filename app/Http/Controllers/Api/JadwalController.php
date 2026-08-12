@@ -29,9 +29,9 @@ class JadwalController extends Controller
             ->where('is_aktif', true)
             ->where('jadwal_terkunci', false)
             ->whereColumn('jml_terjadwal', '<', 'kuota')
-            ->where(function($q) use ($request) {
+            ->where(function ($q) use ($request) {
                 $q->where('jk_target', $request->gender)
-                  ->orWhere('jk_target', 'semua');
+                    ->orWhere('jk_target', 'semua');
             })
             ->whereNotExists(function ($q) use ($request) {
                 $q->select(DB::raw(1))
@@ -69,9 +69,9 @@ class JadwalController extends Controller
             ->where('is_aktif', true)
             ->where('jadwal_terkunci', false)
             ->whereColumn('jml_terjadwal', '<', 'kuota')
-            ->where(function($q) use ($request) {
+            ->where(function ($q) use ($request) {
                 $q->where('jk_target', $request->gender)
-                  ->orWhere('jk_target', 'semua');
+                    ->orWhere('jk_target', 'semua');
             });
 
         if ($request->tanggal === \Carbon\Carbon::today()->format('Y-m-d')) {
@@ -86,11 +86,6 @@ class JadwalController extends Controller
 
     /**
      * Admin: Kelola Jam Operasional (On/Off)
-     *
-     * PERUBAHAN: jam operasional sekarang bersifat GLOBAL, berlaku untuk
-     * SEMUA layanan pada jam & tanggal yang sama (tidak lagi per layanan_id).
-     * Slot yang sudah memiliki booking (jml_terjadwal > 0) tetap dilindungi
-     * dan tidak akan ikut berubah statusnya.
      */
     public function toggleOperasional(Request $request)
     {
@@ -110,7 +105,6 @@ class JadwalController extends Controller
             'is_aktif'  => 'required|boolean',
             'force_close' => 'sometimes|boolean'
         ], [
-            // Custom pesan error agar user/admin paham batasannya
             'tgl_jadwal.after_or_equal' => 'Tanggal tidak boleh di masa lalu.',
             'tgl_jadwal.before_or_equal' => 'Jadwal hanya bisa diatur untuk maksimal 7 hari ke depan.',
         ]);
@@ -150,16 +144,16 @@ class JadwalController extends Controller
             $bookings = \App\Models\Booking::whereIn('jadwal_id', $jadwalIds)
                 ->whereIn('status', ['pending', 'confirmed'])
                 ->get();
-            
+
             foreach ($bookings as $booking) {
                 $statusFrom = $booking->status;
                 $booking->status = 'cancelled_by_admin';
                 $booking->save();
-                
+
                 if (method_exists($booking, 'logStatus')) {
                     $booking->logStatus($statusFrom, 'cancelled_by_admin', $request->user()->id ?? 0);
                 }
-                
+
                 if ($booking->user) {
                     $booking->user->notify(new \App\Notifications\BookingCancelledNotification(
                         $booking->id,
@@ -193,14 +187,6 @@ class JadwalController extends Controller
 
     /**
      * Admin: Daftar jam operasional GLOBAL untuk satu tanggal.
-     *
-     * Mengelompokkan jadwal per jam_mulai (lintas SEMUA layanan), supaya
-     * admin bisa toggle satu jam dan itu berlaku ke seluruh layanan.
-     * - is_aktif yang ditampilkan: true hanya jika SEMUA layanan pada jam
-     *   itu aktif (kalau ada satu yang nonaktif, dianggap "campuran"/false,
-     *   supaya tombol toggle konsisten dengan apa yang akan terjadi saat ditekan).
-     * - kuota & jml_terjadwal dijumlahkan dari seluruh layanan pada jam itu,
-     *   sekadar info kepadatan agar admin tahu ada booking aktif atau tidak.
      */
     public function getJadwalOperasional(Request $request)
     {
@@ -216,7 +202,7 @@ class JadwalController extends Controller
             return [
                 'jam_mulai'      => $jamMulai,
                 'jam_selesai'    => $items->first()->jam_berakhir,
-                'is_aktif'       => $items->every(fn ($i) => (bool) $i->is_aktif),
+                'is_aktif'       => $items->every(fn($i) => (bool) $i->is_aktif),
                 'kuota'          => $items->sum('kuota'),
                 'jml_terjadwal'  => $items->sum('jml_terjadwal'),
                 'jumlah_layanan' => $items->count(),

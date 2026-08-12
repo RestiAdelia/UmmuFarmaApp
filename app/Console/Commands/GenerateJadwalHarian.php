@@ -19,17 +19,16 @@ class GenerateJadwalHarian extends Command
      *
      * @var string
      */
-    protected $description = 'Generate jadwal harian (otomatis 60 hari ke depan) untuk semua layanan yang aktif';
-
+    protected $description = 'Generate jadwal mingguan (otomatis 7 hari ke depan) untuk semua layanan yang aktif';
     /**
      * Execute the console command.
      */
     public function handle(JadwalGeneratorService $generatorService)
     {
         $this->info('Memulai pembuatan jadwal harian...');
-        
+
         $jumlahDibuat = $generatorService->generateUntukSemuaLayananAktif();
-        
+
         $this->info("Proses selesai. Sebanyak {$jumlahDibuat} slot jadwal baru telah dibuat.");
     }
 }

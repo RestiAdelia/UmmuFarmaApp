@@ -22,7 +22,7 @@ class BookingFactory extends Factory
     public function definition(): array
     {
         $gender = fake()->randomElement(['laki-laki', 'perempuan']);
-        $status = fake()->randomElement(['pending', 'confirmed', 'done', 'cancelled', 'cancelled_by_admin']);
+        $status = fake()->randomElement(['confirmed', 'done', 'cancelled', 'cancelled_by_admin']);
         
         $bookingAt = fake()->dateTimeBetween('-2 months', 'now');
         $confirmasiAt = in_array($status, ['confirmed', 'done']) ? fake()->dateTimeBetween($bookingAt, 'now') : null;

@@ -19,7 +19,7 @@ class BookingController extends Controller
      */
     public function index(Request $request)
     {
-        // Auto-expire: Tandai booking yg jadwal dan jamnya sudah lewat dari waktu saat ini
+        // Auto-expire lewat hari dan jam
         Booking::where('user_id', $request->user()->id)
             ->whereIn('status', ['confirmed', 'pending'])
             ->whereHas('jadwal', function ($q) {
@@ -31,6 +31,7 @@ class BookingController extends Controller
             'jadwal',
             'jadwal.layanan',
             'ticket',
+            'logs.changedByUser',
         ])
             ->where('user_id', $request->user()->id)
             ->orderByDesc('created_at')
@@ -52,24 +53,23 @@ class BookingController extends Controller
         ]);
 
         return DB::transaction(function () use ($request) {
-            // 1. Cari & Lock jadwal berdasarkan UniqueID (UUID)
+            //  Cari & Lock jadwal 
             $jadwal = Jadwal::where('UniqueID', $request->jadwal_id)->lockForUpdate()->first();
 
             if (!$jadwal) {
                 return $this->error('Jadwal tidak ditemukan.', 404);
             }
-
-            // 2. Cek apakah jam operasional di-OFF-kan oleh admin
+            // Cek apakah jam operasional di-OFF
             if (!$jadwal->is_aktif) {
                 return $this->error('Maaf, jam operasional ini sedang dinonaktifkan (OFF).', 422);
             }
 
-            // 3. Cek apakah gender pasien sesuai dengan target jadwal
+            //Cek apakah gender pasien sesuai dengan target jadwal
             if ($jadwal->jk_target !== 'semua' && $jadwal->jk_target !== $request->jenis_kelamin) {
                 return $this->error('Jadwal ini khusus untuk ' . $jadwal->jk_target, 422);
             }
 
-            // 3.5 Cek apakah jam sudah terlewat jika booking hari ini
+            // cek apakah jam sudah terlewat jika booking hari ini
             if ($jadwal->tgl_jadwal->isToday()) {
                 $currentTime = \Carbon\Carbon::now()->format('H:i:s');
                 if ($jadwal->jam_mulai <= $currentTime) {
@@ -77,7 +77,7 @@ class BookingController extends Controller
                 }
             }
 
-            // 4. LOGIKA UTAMA: Cek kuota lintas layanan
+            // LOGIKA UTAMA: Cek kuota lintas layanan
             // Jika jam 08:00 Pria sudah dibooking di Layanan Pijat, 
             // maka Layanan Bekam di jam 08:00 Pria juga harus dianggap penuh.
             $exists = Booking::whereHas('jadwal', function ($q) use ($jadwal) {
@@ -85,22 +85,22 @@ class BookingController extends Controller
                     ->where('jam_mulai', $jadwal->jam_mulai);
             })
                 ->where('jenis_kelamin', $request->jenis_kelamin)
-                ->whereIn('status', ['confirmed', 'pending']) // Cek booking yang masih aktif
+                ->whereIn('status', ['confirmed', 'pending']) 
                 ->exists();
 
             if ($exists) {
                 return $this->error('Maaf, kuota untuk ' . $request->jenis_kelamin . ' di jam ini sudah terisi oleh layanan lain.', 422);
             }
 
-            // 5. Cek kuota pada record jadwal itu sendiri (sebagai double check)
+            //Cek kuota pada record jadwal itu sendiri (sebagai double check)
             if ($jadwal->jml_terjadwal >= $jadwal->kuota) {
                 return $this->error('Slot ini sudah penuh.', 422);
             }
 
-            // 6. Eksekusi Pembuatan Booking
+            // Pembuatan Booking
             $booking = Booking::create([
                 'user_id'       => $request->user()->id,
-                'jadwal_id'     => $jadwal->UniqueID, // Simpan UUID
+                'jadwal_id'     => $jadwal->UniqueID,
                 'nama_pasien'   => $request->nama_pasien,
                 'no_hp'         => $request->no_hp,
                 'jenis_kelamin' => $request->jenis_kelamin,
@@ -158,7 +158,7 @@ class BookingController extends Controller
      */
     public function show(int $id)
     {
-        $booking = Booking::with(['jadwal.layanan', 'ticket'])->findOrFail($id);
+        $booking = Booking::with(['jadwal.layanan', 'ticket', 'user', 'logs.changedByUser'])->findOrFail($id);
         return $this->success($booking, 'Detail booking berhasil diambil.');
     }
 
@@ -199,6 +199,16 @@ class BookingController extends Controller
                 } else {
                     return $this->error("Tiket ini sudah melewati tanggal jadwal ($tglFormatted) dan tidak dapat digunakan.", 422);
                 }
+            } else {
+                // Validasi: Check-in hanya bisa dilakukan mulai 1 jam sebelum jadwal terapi dimulai
+                $waktuMulai = \Carbon\Carbon::parse($tglJadwal . ' ' . $jadwal->jam_mulai);
+                $waktuBolehCheckIn = $waktuMulai->copy()->subHour();
+
+                if (now()->lessThan($waktuBolehCheckIn)) {
+                    $jamFormatted = $waktuBolehCheckIn->format('H:i');
+                    $jamJadwal = $waktuMulai->format('H:i');
+                    return $this->error("Check-in terlalu cepat. Check-in untuk jadwal pukul $jamJadwal baru bisa dilakukan mulai pukul $jamFormatted.", 422);
+                }
             }
         }
 
@@ -214,12 +224,12 @@ class BookingController extends Controller
             $booking->update(['status' => 'done']);
             $booking->logStatus($oldStatus, 'done', $request->user()->id);
 
-            return $this->success($tiket->load('booking'), 'Check-in berhasil. Selamat menjalani terapi.');
+            return $this->success($tiket->load('booking.jadwal.layanan'), 'Check-in berhasil. Selamat menjalani terapi.');
         });
     }
 
     /**
-     * Admin: Laporan Pemesanan
+     *  Laporan Pemesanan
      */
     public function getLaporanPemesanan(Request $request)
     {
@@ -233,7 +243,8 @@ class BookingController extends Controller
         $query = Booking::with([
             'user:id,name,email',
             'jadwal.layanan:id,nama_layanan,durasi,tarif',
-            'ticket:id,booking_id,code_ticket,cek_in,scan_at'
+            'ticket:id,booking_id,code_ticket,cek_in,scan_at,scan_by',
+            'logs.changedByUser:id,name'
         ])->orderByDesc('created_at');
 
         // Filter berdasarkan tanggal jika ada (berdasarkan tanggal jadwal terapi)
